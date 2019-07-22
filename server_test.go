@@ -8,7 +8,8 @@ import (
 )
 
 type StubPostStore struct {
-	posts map[int]Post
+	counter int
+	posts   map[int]Post
 }
 
 func (s *StubPostStore) GetAllPosts() []Post {
@@ -27,11 +28,17 @@ func (s *StubPostStore) GetPostByID(id int) (Post, error) {
 	return post, nil
 }
 
+func (s *StubPostStore) CreatePost(title, text string) {
+	s.counter++
+	s.posts[s.counter] = Post{s.counter, title, text}
+}
+
 func TestGETPosts(t *testing.T) {
 	t.Run("return single post", func(t *testing.T) {
 		request := newGetAllPostsRequest()
 		response := httptest.NewRecorder()
 		store := StubPostStore{
+			1,
 			map[int]Post{
 				1: Post{1, "title", "text"},
 			},
@@ -47,7 +54,8 @@ func TestGETPosts(t *testing.T) {
 	t.Run("return empty posts list", func(t *testing.T) {
 		request := newGetAllPostsRequest()
 		response := httptest.NewRecorder()
-		store := StubPostStore{map[int]Post{}}
+		store := StubPostStore{
+			0, map[int]Post{}}
 		server := &PostServer{&store}
 
 		server.ServeHTTP(response, request)
@@ -62,12 +70,27 @@ func newGetAllPostsRequest() *http.Request {
 	return request
 }
 
+func assertStatus(t *testing.T, got, want int) {
+	t.Helper()
+	if got != want {
+		t.Errorf("did not get correct status, got %d, want %d", got, want)
+	}
+}
+
+func assertResponseBody(t *testing.T, want, got string) {
+	t.Helper()
+	if got != want {
+		t.Errorf("response body is wrong, got %q want %q", got, want)
+	}
+}
+
 func TestGETPostByID(t *testing.T) {
 	const fakeID = 1
 	t.Run("return post by id", func(t *testing.T) {
 		request := newGetPostByIDRequest(fakeID)
 		response := httptest.NewRecorder()
 		store := StubPostStore{
+			1,
 			map[int]Post{
 				fakeID: Post{fakeID, "title", "text"},
 			},
@@ -84,6 +107,7 @@ func TestGETPostByID(t *testing.T) {
 		request := newGetPostByIDRequest(2)
 		response := httptest.NewRecorder()
 		store := StubPostStore{
+			1,
 			map[int]Post{
 				fakeID: Post{fakeID, "title", "text"},
 			},
@@ -101,16 +125,26 @@ func newGetPostByIDRequest(id int) *http.Request {
 	return request
 }
 
-func assertStatus(t *testing.T, got, want int) {
-	t.Helper()
-	if got != want {
-		t.Errorf("did not get correct status, got %d, want %d", got, want)
+func TestCreatePost(t *testing.T) {
+	store := StubPostStore{
+		0,
+		map[int]Post{},
 	}
+	server := &PostServer{&store}
+
+	t.Run("it create a Post on POST request)", func(t *testing.T) {
+		request := newCreatePostRequest("title")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+		assertStatus(t, http.StatusAccepted, response.Code)
+		if len(store.posts) != 1 {
+			t.Errorf("got %d post want %d", len(store.posts), 1)
+		}
+	})
 }
 
-func assertResponseBody(t *testing.T, want, got string) {
-	t.Helper()
-	if got != want {
-		t.Errorf("response body is wrong, got %q want %q", got, want)
-	}
+func newCreatePostRequest(title string) *http.Request {
+	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/posts/%s", title), nil)
+	return request
 }

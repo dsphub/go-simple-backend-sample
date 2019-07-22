@@ -7,6 +7,7 @@ import (
 
 func NewInMemoryPostStore() *InMemoryPostStore {
 	return &InMemoryPostStore{
+		1,
 		map[int]Post{
 			1: Post{1, "title", "text"},
 		},
@@ -14,7 +15,8 @@ func NewInMemoryPostStore() *InMemoryPostStore {
 }
 
 type InMemoryPostStore struct {
-	store map[int]Post
+	counter int
+	store   map[int]Post
 }
 
 func (i *InMemoryPostStore) GetAllPosts() []Post {
@@ -27,6 +29,11 @@ func (i *InMemoryPostStore) GetAllPosts() []Post {
 
 func (i *InMemoryPostStore) GetPostByID(id int) (Post, error) {
 	return i.store[id], nil
+}
+
+func (i *InMemoryPostStore) CreatePost(title, text string) {
+	i.counter++
+	i.store[i.counter] = Post{i.counter, title, text}
 }
 
 func main() {

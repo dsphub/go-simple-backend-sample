@@ -20,15 +20,30 @@ type PostServer struct {
 	store PostStore
 }
 
+type PostStore interface {
+	GetAllPosts() []Post
+	GetPostByID(id int) (Post, error)
+	CreatePost(title, text string)
+}
+
+type Post struct {
+	id    int
+	title string
+	text  string
+}
+
 func (p *PostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Path[len("/posts/"):]
-	if r.Method == http.MethodGet {
+	switch r.Method {
+	case http.MethodGet:
 		if postID == "" {
 			p.getAllPosts(w)
 		} else {
 			id, _ := strconv.Atoi(postID) //FIXIT error
 			p.getPostByID(w, id)
 		}
+	case http.MethodPost:
+		p.CreatePost(w, postID, "test") //FIXIT title, text
 	}
 }
 
@@ -49,13 +64,7 @@ func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
 	}
 }
 
-type PostStore interface {
-	GetAllPosts() []Post
-	GetPostByID(id int) (Post, error)
-}
-
-type Post struct {
-	id    int
-	title string
-	text  string
+func (p *PostServer) CreatePost(w http.ResponseWriter, title, text string) {
+	p.store.CreatePost(title, text)
+	w.WriteHeader(http.StatusAccepted)
 }
