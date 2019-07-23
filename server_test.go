@@ -143,7 +143,7 @@ func TestCreatePost(t *testing.T) {
 	server := &PostServer{&store}
 
 	t.Run("it create a Post on POST request)", func(t *testing.T) {
-		request := newCreatePostRequest("title")
+		request := newCreatePostRequest("title", "text")
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -154,8 +154,9 @@ func TestCreatePost(t *testing.T) {
 	})
 }
 
-func newCreatePostRequest(title string) *http.Request {
-	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/posts/%s", title), nil)
+func newCreatePostRequest(title, text string) *http.Request {
+	data := url.Values{"title": {title}, "text": {text}}
+	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/posts/new?%s", data.Encode()), nil)
 	return request
 }
 

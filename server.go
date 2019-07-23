@@ -44,7 +44,12 @@ func (p *PostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			p.getPostByID(w, id)
 		}
 	case http.MethodPost:
-		p.CreatePost(w, postID, "test") //FIXIT title, text
+		if postID == "new" {
+			r.ParseForm()
+			p.CreatePost(w, r.Form["title"][0], r.Form["text"][0]) //FIXIT title, text
+		} else {
+			w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+		}
 	case http.MethodPut:
 		if postID == "" {
 			w.WriteHeader(http.StatusInternalServerError) //FIXIT status

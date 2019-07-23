@@ -16,17 +16,17 @@ func EmptyInMemoryPostStore() *InMemoryPostStore {
 func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 	store := EmptyInMemoryPostStore()
 	server := PostServer{store}
-	postTitle := "title"
+	title, text := "title", "text"
 
-	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(postTitle))
-	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(postTitle))
-	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(postTitle))
+	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
+	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
+	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
 
 	response := httptest.NewRecorder()
 	server.ServeHTTP(response, newGetAllPostsRequest())
 	assertStatus(t, response.Code, http.StatusOK)
 
-	assertResponseBody(t, "[{1 title test} {2 title test} {3 title test}]", response.Body.String())
+	assertResponseBody(t, "[{1 title text} {2 title text} {3 title text}]", response.Body.String())
 }
 
 func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
