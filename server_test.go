@@ -11,8 +11,6 @@ import (
 	"testing"
 )
 
-const jsonContentType = "application/json"
-
 type StubPostStore struct {
 	counter int
 	posts   map[int]Post
@@ -170,7 +168,7 @@ func TestCreatePost(t *testing.T) {
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
-		assertStatus(t, http.StatusAccepted, response.Code)
+		assertStatus(t, http.StatusCreated, response.Code)
 		assertPostCount(t, expectedPostCount, len(store.posts))
 	})
 }
@@ -244,7 +242,7 @@ func TestDeletePost(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 
-		assertStatus(t, http.StatusOK, response.Code)
+		assertStatus(t, http.StatusNoContent, response.Code)
 		assertPostCount(t, expectedPostCount, len(store.posts))
 	})
 

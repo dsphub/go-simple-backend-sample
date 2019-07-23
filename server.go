@@ -12,6 +12,8 @@ const (
 
 type PostError string
 
+const jsonContentType = "application/json"
+
 func (e PostError) Error() string {
 	return string(e)
 }
@@ -54,7 +56,11 @@ func (p *PostServer) postsHandler(w http.ResponseWriter, r *http.Request) {
 		if postID == "" {
 			p.getAllPosts(w)
 		} else {
-			id, _ := strconv.Atoi(postID) //FIXIT error
+			id, err := strconv.Atoi(postID)
+			if err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
 			p.getPostByID(w, id)
 		}
 	case http.MethodPost:
@@ -62,21 +68,29 @@ func (p *PostServer) postsHandler(w http.ResponseWriter, r *http.Request) {
 			r.ParseForm()
 			p.CreatePost(w, r.Form["title"][0], r.Form["text"][0]) //FIXIT title, text
 		} else {
-			w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+			w.WriteHeader(http.StatusUnprocessableEntity)
 		}
 	case http.MethodPut:
 		if postID == "" {
-			w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+			w.WriteHeader(http.StatusUnprocessableEntity)
 		} else {
 			r.ParseForm()
-			id, _ := strconv.Atoi(postID)                              //FIXIT error
+			id, err := strconv.Atoi(postID)
+			if err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
 			p.UpdatePost(w, id, r.Form["title"][0], r.Form["text"][0]) //FIXIT title, text
 		}
 	case http.MethodDelete:
 		if postID == "" {
-			w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+			w.WriteHeader(http.StatusUnprocessableEntity)
 		} else {
-			id, _ := strconv.Atoi(postID) //FIXIT error
+			id, err := strconv.Atoi(postID)
+			if err != nil {
+				w.WriteHeader(http.StatusUnprocessableEntity)
+				return
+			}
 			p.DeletePost(w, id)
 		}
 	}
@@ -89,7 +103,7 @@ func (p *PostServer) getAllPosts(w http.ResponseWriter) {
 }
 
 func setResponseContentTypeAsJSON(w http.ResponseWriter) {
-	w.Header().Set("content-type", "application/json")
+	w.Header().Set("content-type", jsonContentType)
 }
 
 func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
@@ -101,13 +115,13 @@ func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
 		setResponseContentTypeAsJSON(w)
 		json.NewEncoder(w).Encode(post)
 	default:
-		w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+		w.WriteHeader(http.StatusNotFound)
 	}
 }
 
 func (p *PostServer) CreatePost(w http.ResponseWriter, title, text string) {
 	p.store.CreatePost(title, text)
-	w.WriteHeader(http.StatusAccepted)
+	w.WriteHeader(http.StatusCreated)
 }
 
 func (p *PostServer) UpdatePost(w http.ResponseWriter, id int, title, text string) {
@@ -115,7 +129,6 @@ func (p *PostServer) UpdatePost(w http.ResponseWriter, id int, title, text strin
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 	}
-	w.WriteHeader(http.StatusOK)
 }
 
 func (p *PostServer) DeletePost(w http.ResponseWriter, id int) {
@@ -123,5 +136,5 @@ func (p *PostServer) DeletePost(w http.ResponseWriter, id int) {
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 	}
-	w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusNoContent)
 }
