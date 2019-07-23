@@ -41,6 +41,11 @@ func (i *InMemoryPostStore) UpdatePost(id int, title, text string) error {
 	return nil
 }
 
+func (i *InMemoryPostStore) DeletePost(id int) error {
+	delete(i.store, id)
+	return nil
+}
+
 func main() {
 	server := &PostServer{NewInMemoryPostStore()}
 

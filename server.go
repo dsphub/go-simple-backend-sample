@@ -25,6 +25,7 @@ type PostStore interface {
 	GetPostByID(id int) (Post, error)
 	CreatePost(title, text string)
 	UpdatePost(id int, title, text string) error
+	DeletePost(id int) error
 }
 
 type Post struct {
@@ -58,6 +59,13 @@ func (p *PostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			id, _ := strconv.Atoi(postID)                              //FIXIT error
 			p.UpdatePost(w, id, r.Form["title"][0], r.Form["text"][0]) //FIXIT title, text
 		}
+	case http.MethodDelete:
+		if postID == "" {
+			w.WriteHeader(http.StatusInternalServerError) //FIXIT status
+		} else {
+			id, _ := strconv.Atoi(postID) //FIXIT error
+			p.DeletePost(w, id)
+		}
 	}
 }
 
@@ -85,6 +93,14 @@ func (p *PostServer) CreatePost(w http.ResponseWriter, title, text string) {
 
 func (p *PostServer) UpdatePost(w http.ResponseWriter, id int, title, text string) {
 	err := p.store.UpdatePost(id, title, text)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+	}
+	w.WriteHeader(http.StatusOK)
+}
+
+func (p *PostServer) DeletePost(w http.ResponseWriter, id int) {
+	err := p.store.DeletePost(id)
 	if err != nil {
 		w.WriteHeader(http.StatusNotFound)
 	}

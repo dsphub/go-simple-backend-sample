@@ -41,3 +41,16 @@ func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 
 	assertResponseBody(t, "[{1 new title new text}]", response.Body.String())
 }
+
+func TestDeletingThePostAndRetrievingOtherOnes(t *testing.T) {
+	store := NewInMemoryPostStore()
+	server := PostServer{store}
+
+	server.ServeHTTP(httptest.NewRecorder(), newDeletePostRequest(1))
+
+	response := httptest.NewRecorder()
+	server.ServeHTTP(response, newGetAllPostsRequest())
+	assertStatus(t, response.Code, http.StatusOK)
+
+	assertResponseBody(t, "[]", response.Body.String())
+}
