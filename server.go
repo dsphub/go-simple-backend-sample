@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"encoding/json"
 	"net/http"
 	"strconv"
 )
@@ -18,6 +18,19 @@ func (e PostError) Error() string {
 
 type PostServer struct {
 	store PostStore
+	http.Handler
+}
+
+func NewPostServer(store PostStore) *PostServer {
+	p := new(PostServer)
+
+	p.store = store
+
+	router := http.NewServeMux()
+	router.Handle("/posts/", http.HandlerFunc(p.postsHandler))
+
+	p.Handler = router
+	return p
 }
 
 type PostStore interface {
@@ -29,12 +42,12 @@ type PostStore interface {
 }
 
 type Post struct {
-	id    int
-	title string
-	text  string
+	Id    int    `json:"id"`
+	Title string `json:"title"`
+	Text  string `json:"text"`
 }
 
-func (p *PostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func (p *PostServer) postsHandler(w http.ResponseWriter, r *http.Request) {
 	postID := r.URL.Path[len("/posts/"):]
 	switch r.Method {
 	case http.MethodGet:
@@ -71,7 +84,12 @@ func (p *PostServer) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 func (p *PostServer) getAllPosts(w http.ResponseWriter) {
 	posts := p.store.GetAllPosts()
-	fmt.Fprint(w, posts)
+	setResponseContentTypeAsJSON(w)
+	json.NewEncoder(w).Encode(posts)
+}
+
+func setResponseContentTypeAsJSON(w http.ResponseWriter) {
+	w.Header().Set("content-type", "application/json")
 }
 
 func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
@@ -80,7 +98,8 @@ func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
 	case ErrorPostDoesNotExists:
 		w.WriteHeader(http.StatusNotFound)
 	case nil:
-		fmt.Fprint(w, post)
+		setResponseContentTypeAsJSON(w)
+		json.NewEncoder(w).Encode(post)
 	default:
 		w.WriteHeader(http.StatusInternalServerError) //FIXIT status
 	}

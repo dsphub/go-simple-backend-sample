@@ -15,42 +15,45 @@ func EmptyInMemoryPostStore() *InMemoryPostStore {
 
 func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 	store := EmptyInMemoryPostStore()
-	server := PostServer{store}
+	server := NewPostServer(store)
 	title, text := "title", "text"
-
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
-
 	response := httptest.NewRecorder()
-	server.ServeHTTP(response, newGetAllPostsRequest())
-	assertStatus(t, response.Code, http.StatusOK)
 
-	assertResponseBody(t, "[{1 title text} {2 title text} {3 title text}]", response.Body.String())
+	server.ServeHTTP(response, newGetAllPostsRequest())
+
+	got := getPostsFromResponse(t, response.Body)
+	want := store.GetAllPosts()
+	assertStatus(t, response.Code, http.StatusOK)
+	assertPosts(t, got, want)
 }
 
 func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := PostServer{store}
-
+	server := NewPostServer(store)
 	server.ServeHTTP(httptest.NewRecorder(), newUpdatePostRequest(1, "new title", "new text"))
-
 	response := httptest.NewRecorder()
-	server.ServeHTTP(response, newGetAllPostsRequest())
-	assertStatus(t, response.Code, http.StatusOK)
 
-	assertResponseBody(t, "[{1 new title new text}]", response.Body.String())
+	server.ServeHTTP(response, newGetAllPostsRequest())
+
+	got := getPostsFromResponse(t, response.Body)
+	want := store.GetAllPosts()
+	assertStatus(t, response.Code, http.StatusOK)
+	assertPosts(t, got, want)
 }
 
 func TestDeletingThePostAndRetrievingOtherOnes(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := PostServer{store}
-
+	server := NewPostServer(store)
 	server.ServeHTTP(httptest.NewRecorder(), newDeletePostRequest(1))
-
 	response := httptest.NewRecorder()
-	server.ServeHTTP(response, newGetAllPostsRequest())
-	assertStatus(t, response.Code, http.StatusOK)
 
-	assertResponseBody(t, "[]", response.Body.String())
+	server.ServeHTTP(response, newGetAllPostsRequest())
+
+	got := getPostsFromResponse(t, response.Body)
+	want := store.GetAllPosts()
+	assertStatus(t, response.Code, http.StatusOK)
+	assertPosts(t, got, want)
 }
