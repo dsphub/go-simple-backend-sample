@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"testing"
 )
 
@@ -31,6 +32,15 @@ func (s *StubPostStore) GetPostByID(id int) (Post, error) {
 func (s *StubPostStore) CreatePost(title, text string) {
 	s.counter++
 	s.posts[s.counter] = Post{s.counter, title, text}
+}
+
+func (s *StubPostStore) UpdatePost(id int, title, text string) error {
+	_, err := s.GetPostByID(id)
+	if err != nil {
+		return err
+	}
+	s.posts[id] = Post{id, title, text}
+	return nil
 }
 
 func TestGETPosts(t *testing.T) {
@@ -146,5 +156,43 @@ func TestCreatePost(t *testing.T) {
 
 func newCreatePostRequest(title string) *http.Request {
 	request, _ := http.NewRequest(http.MethodPost, fmt.Sprintf("/posts/%s", title), nil)
+	return request
+}
+
+func TestUpdatePost(t *testing.T) {
+	const fakeID = 1
+	store := StubPostStore{
+		1,
+		map[int]Post{
+			fakeID: Post{fakeID, "title", "text"},
+		},
+	}
+	server := &PostServer{&store}
+
+	t.Run("update all the post details", func(t *testing.T) {
+		request := newUpdatePostRequest(1, "new title", "new text")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, http.StatusOK, response.Code)
+		if len(store.posts) != 1 {
+			t.Errorf("got %d post want %d", len(store.posts), 1)
+		}
+	})
+
+	t.Run("return 404 on missing post", func(t *testing.T) {
+		request := newUpdatePostRequest(2, "dummy title", "dummy text")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusNotFound)
+	})
+}
+
+func newUpdatePostRequest(id int, title, text string) *http.Request {
+	data := url.Values{"title": {"new title"}, "text": {"new text"}}
+	request, _ := http.NewRequest(http.MethodPut, fmt.Sprintf("/posts/%d?%s", id, data.Encode()), nil)
 	return request
 }

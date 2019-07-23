@@ -36,6 +36,11 @@ func (i *InMemoryPostStore) CreatePost(title, text string) {
 	i.store[i.counter] = Post{i.counter, title, text}
 }
 
+func (i *InMemoryPostStore) UpdatePost(id int, title, text string) error {
+	i.store[id] = Post{id, title, text}
+	return nil
+}
+
 func main() {
 	server := &PostServer{NewInMemoryPostStore()}
 
