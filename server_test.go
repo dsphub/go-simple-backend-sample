@@ -1,5 +1,7 @@
 package main
 
+import . "github.com/dsphub/go-simple-crud-sample/model"
+
 import (
 	"encoding/json"
 	"fmt"
@@ -16,12 +18,12 @@ type StubPostStore struct {
 	posts   map[int]Post
 }
 
-func (s *StubPostStore) GetAllPosts() []Post {
+func (s *StubPostStore) GetAllPosts() ([]Post, error) {
 	values := make([]Post, 0, len(s.posts))
 	for _, v := range s.posts {
 		values = append(values, v)
 	}
-	return values
+	return values, nil
 }
 
 func (s *StubPostStore) GetPostByID(id int) (Post, error) {
@@ -32,9 +34,10 @@ func (s *StubPostStore) GetPostByID(id int) (Post, error) {
 	return post, nil
 }
 
-func (s *StubPostStore) CreatePost(title, text string) {
+func (s *StubPostStore) CreatePost(title, text string) error {
 	s.counter++
 	s.posts[s.counter] = Post{s.counter, title, text}
+	return nil
 }
 
 func (s *StubPostStore) UpdatePost(id int, title, text string) error {
@@ -57,12 +60,13 @@ func (s *StubPostStore) DeletePost(id int) error {
 
 func TestGetPosts(t *testing.T) {
 	t.Run("return all posts", func(t *testing.T) {
-		const fakeID = 1
+		const postID = 1
 		const actualPostCount = 1
+		want := []Post{Post{postID, "title", "text"}}
 		store := StubPostStore{
 			actualPostCount,
 			map[int]Post{
-				fakeID: Post{fakeID, "title", "text"},
+				postID: want[0],
 			},
 		}
 		server := NewPostServer(&store)
@@ -73,10 +77,11 @@ func TestGetPosts(t *testing.T) {
 		got := getPostsFromResponse(t, response.Body)
 		assertStatus(t, http.StatusOK, response.Code)
 		assertContentType(t, response)
-		assertPosts(t, got, store.GetAllPosts())
+		assertPosts(t, want, got)
 	})
 
 	t.Run("return empty posts list", func(t *testing.T) {
+		want := []Post{}
 		request := newGetAllPostsRequest()
 		response := httptest.NewRecorder()
 		store := StubPostStore{0, map[int]Post{}}
@@ -86,7 +91,25 @@ func TestGetPosts(t *testing.T) {
 
 		got := getPostsFromResponse(t, response.Body)
 		assertStatus(t, http.StatusOK, response.Code)
-		assertPosts(t, got, store.GetAllPosts())
+		assertPosts(t, want, got)
+	})
+
+	t.Run("return 404 on failed request", func(t *testing.T) {
+		const actualPostCount = 1
+		const failedID = 99
+		request := newGetPostByIDRequest(2)
+		response := httptest.NewRecorder()
+		store := StubPostStore{
+			actualPostCount,
+			map[int]Post{
+				failedID: Post{failedID, "title", "text"},
+			},
+		}
+		server := NewPostServer(&store)
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusNotFound)
 	})
 }
 
@@ -110,15 +133,17 @@ func assertResponseBody(t *testing.T, want, got string) {
 }
 
 func TestGetPostByID(t *testing.T) {
-	const fakeID = 1
+	const postID = 1
 	const actualPostCount = 1
+
 	t.Run("return post by id", func(t *testing.T) {
-		request := newGetPostByIDRequest(fakeID)
+		want := Post{postID, "title", "text"}
+		request := newGetPostByIDRequest(postID)
 		response := httptest.NewRecorder()
 		store := StubPostStore{
 			actualPostCount,
 			map[int]Post{
-				fakeID: Post{fakeID, "title", "text"},
+				postID: want,
 			},
 		}
 		server := NewPostServer(&store)
@@ -128,17 +153,17 @@ func TestGetPostByID(t *testing.T) {
 		got := getSinglePostFromResponse(t, response.Body)
 		assertStatus(t, http.StatusOK, response.Code)
 		assertContentType(t, response)
-		assertPosts(t, []Post{got}, store.GetAllPosts())
+		assertPost(t, want, got)
 	})
 
-	t.Run("return 404 on missing post", func(t *testing.T) {
+	t.Run("return 422 for invalid post", func(t *testing.T) {
 		const actualPostCount = 1
-		request := newGetPostByIDRequest(2)
+		request := newCreatePostRequest("", "")
 		response := httptest.NewRecorder()
 		store := StubPostStore{
 			actualPostCount,
 			map[int]Post{
-				fakeID: Post{fakeID, "title", "text"},
+				postID: Post{postID, "title", "text"},
 			},
 		}
 		server := NewPostServer(&store)
@@ -155,20 +180,37 @@ func newGetPostByIDRequest(id int) *http.Request {
 }
 
 func TestCreatePost(t *testing.T) {
-	const actualPostCount = 0
-	const expectedPostCount = 1
-	store := StubPostStore{
-		actualPostCount,
-		map[int]Post{},
-	}
-	server := NewPostServer(&store)
 
 	t.Run("create a new post)", func(t *testing.T) {
+		const actualPostCount = 0
+		const expectedPostCount = 1
+		store := StubPostStore{
+			actualPostCount,
+			map[int]Post{},
+		}
+		server := NewPostServer(&store)
 		request := newCreatePostRequest("title", "text")
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
 		assertStatus(t, http.StatusCreated, response.Code)
+		assertPostCount(t, expectedPostCount, len(store.posts))
+	})
+
+	t.Run("return 404 on missing post", func(t *testing.T) {
+		const actualPostCount = 0
+		const expectedPostCount = 0
+		store := StubPostStore{
+			actualPostCount,
+			map[int]Post{},
+		}
+		server := NewPostServer(&store)
+		request := newCreatePostRequest("dummy title", "dummy text")
+		response := httptest.NewRecorder()
+
+		server.ServeHTTP(response, request)
+
+		assertStatus(t, response.Code, http.StatusNotFound)
 		assertPostCount(t, expectedPostCount, len(store.posts))
 	})
 }
@@ -180,19 +222,19 @@ func newCreatePostRequest(title, text string) *http.Request {
 }
 
 func TestUpdatePost(t *testing.T) {
-	const fakeID = 1
+	const postID = 1
 	const actualPostCount = 1
 	const expectedPostCount = 1
 	store := StubPostStore{
 		1,
 		map[int]Post{
-			fakeID: Post{fakeID, "title", "text"},
+			postID: Post{postID, "title", "text"},
 		},
 	}
 	server := NewPostServer(&store)
 
 	t.Run("update all the post details", func(t *testing.T) {
-		request := newUpdatePostRequest(fakeID, "new title", "new text")
+		request := newUpdatePostRequest(postID, "new title", "new text")
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -227,17 +269,17 @@ func assertPostCount(t *testing.T, want, got int) {
 
 func TestDeletePost(t *testing.T) {
 	t.Run("delet the post by id", func(t *testing.T) {
-		const fakeID = 1
+		const postID = 1
 		const actualPostCount = 1
 		const expectedPostCount = 0
 		store := StubPostStore{
 			actualPostCount,
 			map[int]Post{
-				fakeID: Post{fakeID, "title", "text"},
+				postID: Post{postID, "title", "text"},
 			},
 		}
 		server := NewPostServer(&store)
-		request := newDeletePostRequest(fakeID)
+		request := newDeletePostRequest(postID)
 		response := httptest.NewRecorder()
 
 		server.ServeHTTP(response, request)
@@ -247,14 +289,14 @@ func TestDeletePost(t *testing.T) {
 	})
 
 	t.Run("return 404 on missing post", func(t *testing.T) {
-		const fakeID = 1
+		const postID = 1
 		const unknownID = 2
 		const actualPostCount = 1
 		const expectedPostCount = 1
 		store := StubPostStore{
 			actualPostCount,
 			map[int]Post{
-				fakeID: Post{fakeID, "title", "text"},
+				postID: Post{postID, "title", "text"},
 			},
 		}
 		server := NewPostServer(&store)
@@ -294,6 +336,13 @@ func getSinglePostFromResponse(t *testing.T, body io.Reader) (post Post) {
 func assertPosts(t *testing.T, want, got []Post) {
 	t.Helper()
 	if !reflect.DeepEqual(got, want) {
+		t.Errorf("got %v want %v", got, want)
+	}
+}
+
+func assertPost(t *testing.T, want, got Post) {
+	t.Helper()
+	if got != want {
 		t.Errorf("got %v want %v", got, want)
 	}
 }

@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"strconv"
+
+	. "github.com/dsphub/go-simple-crud-sample/store"
 )
 
 const (
@@ -33,20 +35,6 @@ func NewPostServer(store PostStore) *PostServer {
 
 	p.Handler = router
 	return p
-}
-
-type PostStore interface {
-	GetAllPosts() []Post
-	GetPostByID(id int) (Post, error)
-	CreatePost(title, text string)
-	UpdatePost(id int, title, text string) error
-	DeletePost(id int) error
-}
-
-type Post struct {
-	Id    int    `json:"id"`
-	Title string `json:"title"`
-	Text  string `json:"text"`
 }
 
 func (p *PostServer) postsHandler(w http.ResponseWriter, r *http.Request) {
@@ -97,7 +85,11 @@ func (p *PostServer) postsHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func (p *PostServer) getAllPosts(w http.ResponseWriter) {
-	posts := p.store.GetAllPosts()
+	posts, err := p.store.GetAllPosts()
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound)
+		return
+	}
 	setResponseContentTypeAsJSON(w)
 	json.NewEncoder(w).Encode(posts)
 }
@@ -120,7 +112,10 @@ func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
 }
 
 func (p *PostServer) CreatePost(w http.ResponseWriter, title, text string) {
-	p.store.CreatePost(title, text)
+	err := p.store.CreatePost(title, text)
+	if err != nil {
+		w.WriteHeader(http.StatusNotFound) //FIXIT status
+	}
 	w.WriteHeader(http.StatusCreated)
 }
 

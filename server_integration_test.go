@@ -4,6 +4,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+
+	. "github.com/dsphub/go-simple-crud-sample/model"
+	. "github.com/dsphub/go-simple-crud-sample/store"
 )
 
 func EmptyInMemoryPostStore() *InMemoryPostStore {
@@ -25,7 +28,7 @@ func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 	server.ServeHTTP(response, newGetAllPostsRequest())
 
 	got := getPostsFromResponse(t, response.Body)
-	want := store.GetAllPosts()
+	want, _ := store.GetAllPosts()
 	assertStatus(t, response.Code, http.StatusOK)
 	assertPosts(t, got, want)
 }
@@ -39,7 +42,7 @@ func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 	server.ServeHTTP(response, newGetAllPostsRequest())
 
 	got := getPostsFromResponse(t, response.Body)
-	want := store.GetAllPosts()
+	want, _ := store.GetAllPosts()
 	assertStatus(t, response.Code, http.StatusOK)
 	assertPosts(t, got, want)
 }
@@ -53,7 +56,7 @@ func TestDeletingThePostAndRetrievingOtherOnes(t *testing.T) {
 	server.ServeHTTP(response, newGetAllPostsRequest())
 
 	got := getPostsFromResponse(t, response.Body)
-	want := store.GetAllPosts()
+	want, _ := store.GetAllPosts()
 	assertStatus(t, response.Code, http.StatusOK)
 	assertPosts(t, got, want)
 }
