@@ -1,7 +1,5 @@
 package main
 
-import . "github.com/dsphub/go-simple-crud-sample/model"
-
 import (
 	"encoding/json"
 	"fmt"
@@ -11,52 +9,10 @@ import (
 	"net/url"
 	"reflect"
 	"testing"
+
+	. "github.com/dsphub/go-simple-crud-sample/model"
+	. "github.com/dsphub/go-simple-crud-sample/testdata"
 )
-
-type StubPostStore struct {
-	counter int
-	posts   map[int]Post
-}
-
-func (s *StubPostStore) GetAllPosts() ([]Post, error) {
-	values := make([]Post, 0, len(s.posts))
-	for _, v := range s.posts {
-		values = append(values, v)
-	}
-	return values, nil
-}
-
-func (s *StubPostStore) GetPostByID(id int) (Post, error) {
-	post, ok := s.posts[id]
-	if !ok {
-		return Post{}, ErrorPostDoesNotExists //FIXIT post as null
-	}
-	return post, nil
-}
-
-func (s *StubPostStore) CreatePost(title, text string) error {
-	s.counter++
-	s.posts[s.counter] = Post{s.counter, title, text}
-	return nil
-}
-
-func (s *StubPostStore) UpdatePost(id int, title, text string) error {
-	_, err := s.GetPostByID(id)
-	if err != nil {
-		return err
-	}
-	s.posts[id] = Post{id, title, text}
-	return nil
-}
-
-func (s *StubPostStore) DeletePost(id int) error {
-	_, err := s.GetPostByID(id)
-	if err != nil {
-		return err
-	}
-	delete(s.posts, id)
-	return nil
-}
 
 func TestGetPosts(t *testing.T) {
 	t.Run("return all posts", func(t *testing.T) {
@@ -156,16 +112,10 @@ func TestGetPostByID(t *testing.T) {
 		assertPost(t, want, got)
 	})
 
-	t.Run("return 422 for invalid post", func(t *testing.T) {
-		const actualPostCount = 1
-		request := newCreatePostRequest("", "")
+	t.Run("return 404 on missing post", func(t *testing.T) {
+		request := newGetPostByIDRequest(0)
 		response := httptest.NewRecorder()
-		store := StubPostStore{
-			actualPostCount,
-			map[int]Post{
-				postID: Post{postID, "title", "text"},
-			},
-		}
+		store := StubFailedPostStore{}
 		server := NewPostServer(&store)
 
 		server.ServeHTTP(response, request)
@@ -180,7 +130,6 @@ func newGetPostByIDRequest(id int) *http.Request {
 }
 
 func TestCreatePost(t *testing.T) {
-
 	t.Run("create a new post)", func(t *testing.T) {
 		const actualPostCount = 0
 		const expectedPostCount = 1
@@ -194,16 +143,11 @@ func TestCreatePost(t *testing.T) {
 
 		server.ServeHTTP(response, request)
 		assertStatus(t, http.StatusCreated, response.Code)
-		assertPostCount(t, expectedPostCount, len(store.posts))
+		assertPostCount(t, expectedPostCount, len(store.Posts))
 	})
 
 	t.Run("return 404 on missing post", func(t *testing.T) {
-		const actualPostCount = 0
-		const expectedPostCount = 0
-		store := StubPostStore{
-			actualPostCount,
-			map[int]Post{},
-		}
+		store := StubFailedPostStore{}
 		server := NewPostServer(&store)
 		request := newCreatePostRequest("dummy title", "dummy text")
 		response := httptest.NewRecorder()
@@ -211,7 +155,6 @@ func TestCreatePost(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusNotFound)
-		assertPostCount(t, expectedPostCount, len(store.posts))
 	})
 }
 
@@ -240,7 +183,7 @@ func TestUpdatePost(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, http.StatusOK, response.Code)
-		assertPostCount(t, expectedPostCount, len(store.posts))
+		assertPostCount(t, expectedPostCount, len(store.Posts))
 	})
 
 	t.Run("return 404 on missing post", func(t *testing.T) {
@@ -250,7 +193,7 @@ func TestUpdatePost(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusNotFound)
-		assertPostCount(t, expectedPostCount, len(store.posts))
+		assertPostCount(t, expectedPostCount, len(store.Posts))
 	})
 }
 
@@ -285,7 +228,7 @@ func TestDeletePost(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, http.StatusNoContent, response.Code)
-		assertPostCount(t, expectedPostCount, len(store.posts))
+		assertPostCount(t, expectedPostCount, len(store.Posts))
 	})
 
 	t.Run("return 404 on missing post", func(t *testing.T) {
@@ -306,7 +249,7 @@ func TestDeletePost(t *testing.T) {
 		server.ServeHTTP(response, request)
 
 		assertStatus(t, response.Code, http.StatusNotFound)
-		assertPostCount(t, expectedPostCount, len(store.posts))
+		assertPostCount(t, expectedPostCount, len(store.Posts))
 	})
 }
 

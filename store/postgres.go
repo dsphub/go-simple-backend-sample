@@ -14,14 +14,22 @@ type PostStore interface {
 	CreatePost(title, text string) error
 	UpdatePost(id int, title, text string) error
 	DeletePost(id int) error
+	Close() error
 }
 
 type PostgresPostStore struct {
 	db *sql.DB
 }
 
-func NewPostgresPostStore(db *sql.DB) *PostgresPostStore {
-	return &PostgresPostStore{db}
+func NewPostgresPostStore(connInfo string) (*PostgresPostStore, error) {
+	db, err := sql.Open("postgres", connInfo)
+	if err != nil {
+		return nil, err
+	}
+	if err = db.Ping(); err != nil {
+		return nil, err
+	}
+	return &PostgresPostStore{db}, nil
 }
 
 func (p *PostgresPostStore) GetAllPosts() ([]Post, error) {
@@ -81,4 +89,8 @@ func (p *PostgresPostStore) DeletePost(id int) error {
 		log.Fatal(err)
 	}
 	return err
+}
+
+func (p *PostgresPostStore) Close() error {
+	return p.db.Close()
 }

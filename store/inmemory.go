@@ -43,3 +43,7 @@ func (i *InMemoryPostStore) DeletePost(id int) error {
 	delete(i.Store, id)
 	return nil
 }
+
+func (i *InMemoryPostStore) Close() error {
+	return nil
+}

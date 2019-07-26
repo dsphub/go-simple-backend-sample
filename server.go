@@ -5,20 +5,11 @@ import (
 	"net/http"
 	"strconv"
 
+	. "github.com/dsphub/go-simple-crud-sample/model"
 	. "github.com/dsphub/go-simple-crud-sample/store"
 )
 
-const (
-	ErrorPostDoesNotExists = PostError("could not find the post by id")
-)
-
-type PostError string
-
 const jsonContentType = "application/json"
-
-func (e PostError) Error() string {
-	return string(e)
-}
 
 type PostServer struct {
 	store PostStore
@@ -101,7 +92,7 @@ func setResponseContentTypeAsJSON(w http.ResponseWriter) {
 func (p *PostServer) getPostByID(w http.ResponseWriter, id int) {
 	post, err := p.store.GetPostByID(id)
 	switch err {
-	case ErrorPostDoesNotExists:
+	case ErrorPostDoesNotExist:
 		w.WriteHeader(http.StatusNotFound)
 	case nil:
 		setResponseContentTypeAsJSON(w)

@@ -9,6 +9,10 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+func NewTestPostgresPostStore(db *sql.DB) *PostgresPostStore {
+	return &PostgresPostStore{db}
+}
+
 func TestShouldGetAllPosts(t *testing.T) {
 	want := []Post{
 		Post{ID: 1, Title: "title1", Content: "text1"},
@@ -21,7 +25,7 @@ func TestShouldGetAllPosts(t *testing.T) {
 		AddRow(2, "title2", "text2")
 	mock.ExpectQuery("SELECT \\* FROM (.+)").WillReturnRows(rows)
 
-	store := NewPostgresPostStore(db)
+	store := NewTestPostgresPostStore(db)
 	got, err := store.GetAllPosts()
 
 	if assert.NoError(t, err, "Error was not expected while getting all posts") {
@@ -38,7 +42,7 @@ func TestShouldGetPostByID(t *testing.T) {
 		AddRow(want.ID, want.Title, want.Content)
 	mock.ExpectQuery("SELECT \\* FROM (.+) WHERE").WillReturnRows(rows)
 
-	store := NewPostgresPostStore(db)
+	store := NewTestPostgresPostStore(db)
 	got, err := store.GetPostByID(1)
 
 	if assert.NoError(t, err, "Error was not expected while getting post") {
@@ -58,7 +62,7 @@ func TestShouldCreatePost(t *testing.T) {
 		WithArgs(want.Title, want.Content).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	store := NewPostgresPostStore(db)
+	store := NewTestPostgresPostStore(db)
 
 	err = store.CreatePost(want.Title, want.Content)
 
@@ -75,7 +79,7 @@ func TestShouldUpdatePost(t *testing.T) {
 		WithArgs(want.ID, want.Title, want.Content).
 		WillReturnResult(sqlmock.NewResult(0, 1))
 
-	store := NewPostgresPostStore(db)
+	store := NewTestPostgresPostStore(db)
 	err = store.UpdatePost(want.ID, want.Title, want.Content)
 
 	assert.NoError(t, err, "Error was not expected while updating post")
@@ -90,7 +94,7 @@ func TestShouldDeletPost(t *testing.T) {
 		WithArgs(want.ID).
 		WillReturnResult(sqlmock.NewResult(1, 1))
 
-	store := NewPostgresPostStore(db)
+	store := NewTestPostgresPostStore(db)
 	err = store.DeletePost(want.ID)
 
 	assert.NoError(t, err, "Error was not expected while deleting post")
