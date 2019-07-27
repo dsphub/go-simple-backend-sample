@@ -25,7 +25,7 @@ func TestGetPosts(t *testing.T) {
 				postID: want[0],
 			},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 
 		response := httptest.NewRecorder()
 		server.ServeHTTP(response, newGetAllPostsRequest())
@@ -41,7 +41,7 @@ func TestGetPosts(t *testing.T) {
 		request := newGetAllPostsRequest()
 		response := httptest.NewRecorder()
 		store := StubPostStore{0, map[int]Post{}}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 
 		server.ServeHTTP(response, request)
 
@@ -61,7 +61,7 @@ func TestGetPosts(t *testing.T) {
 				failedID: Post{failedID, "title", "text"},
 			},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 
 		server.ServeHTTP(response, request)
 
@@ -102,7 +102,7 @@ func TestGetPostByID(t *testing.T) {
 				postID: want,
 			},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 
 		server.ServeHTTP(response, request)
 
@@ -116,7 +116,7 @@ func TestGetPostByID(t *testing.T) {
 		request := newGetPostByIDRequest(0)
 		response := httptest.NewRecorder()
 		store := StubFailedPostStore{}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 
 		server.ServeHTTP(response, request)
 
@@ -137,7 +137,7 @@ func TestCreatePost(t *testing.T) {
 			actualPostCount,
 			map[int]Post{},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 		request := newCreatePostRequest("title", "text")
 		response := httptest.NewRecorder()
 
@@ -148,7 +148,7 @@ func TestCreatePost(t *testing.T) {
 
 	t.Run("return 404 on missing post", func(t *testing.T) {
 		store := StubFailedPostStore{}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 		request := newCreatePostRequest("dummy title", "dummy text")
 		response := httptest.NewRecorder()
 
@@ -174,7 +174,7 @@ func TestUpdatePost(t *testing.T) {
 			postID: Post{postID, "title", "text"},
 		},
 	}
-	server := NewPostServer(&store)
+	server := NewPostServer(&store, std)
 
 	t.Run("update all the post details", func(t *testing.T) {
 		request := newUpdatePostRequest(postID, "new title", "new text")
@@ -221,7 +221,7 @@ func TestDeletePost(t *testing.T) {
 				postID: Post{postID, "title", "text"},
 			},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 		request := newDeletePostRequest(postID)
 		response := httptest.NewRecorder()
 
@@ -242,7 +242,7 @@ func TestDeletePost(t *testing.T) {
 				postID: Post{postID, "title", "text"},
 			},
 		}
-		server := NewPostServer(&store)
+		server := NewPostServer(&store, std)
 		request := newDeletePostRequest(unknownID)
 		response := httptest.NewRecorder()
 

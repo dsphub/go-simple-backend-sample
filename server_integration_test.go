@@ -1,8 +1,10 @@
 package main
 
 import (
+	"log"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"testing"
 
 	. "github.com/dsphub/go-simple-crud-sample/model"
@@ -25,9 +27,11 @@ func EmptyInMemoryPostStore() *StubPostStore {
 	}
 }
 
+var std = log.New(os.Stderr, "", log.LstdFlags)
+
 func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 	store := EmptyInMemoryPostStore()
-	server := NewPostServer(store)
+	server := NewPostServer(store, std)
 	title, text := "title", "text"
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
@@ -44,7 +48,7 @@ func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 
 func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := NewPostServer(store)
+	server := NewPostServer(store, std)
 	server.ServeHTTP(httptest.NewRecorder(), newUpdatePostRequest(1, "new title", "new text"))
 	response := httptest.NewRecorder()
 
@@ -58,7 +62,7 @@ func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 
 func TestDeletingThePostAndRetrievingOtherOnes(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := NewPostServer(store)
+	server := NewPostServer(store, std)
 	server.ServeHTTP(httptest.NewRecorder(), newDeletePostRequest(1))
 	response := httptest.NewRecorder()
 

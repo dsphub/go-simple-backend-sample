@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 	"strconv"
 
@@ -14,9 +15,10 @@ const jsonContentType = "application/json"
 type PostServer struct {
 	store PostStore
 	http.Handler
+	log *log.Logger
 }
 
-func NewPostServer(store PostStore) *PostServer {
+func NewPostServer(store PostStore, log *log.Logger) *PostServer {
 	p := new(PostServer)
 
 	p.store = store
