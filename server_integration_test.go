@@ -6,11 +6,20 @@ import (
 	"testing"
 
 	. "github.com/dsphub/go-simple-crud-sample/model"
-	. "github.com/dsphub/go-simple-crud-sample/store"
+	. "github.com/dsphub/go-simple-crud-sample/testdata"
 )
 
-func EmptyInMemoryPostStore() *InMemoryPostStore {
-	return &InMemoryPostStore{
+func NewInMemoryPostStore() *StubPostStore {
+	return &StubPostStore{
+		0,
+		map[int]Post{
+			1: Post{1, "title", "text"},
+		},
+	}
+}
+
+func EmptyInMemoryPostStore() *StubPostStore {
+	return &StubPostStore{
 		0,
 		map[int]Post{},
 	}
