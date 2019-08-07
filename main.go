@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strconv"
 
 	. "github.com/dsphub/go-simple-crud-sample/store"
@@ -20,25 +21,35 @@ const (
 	password = "any-password"
 	dbname   = "crud"
 )
+
+const domainName = "localhost"
+const httpServerPort = "5000"
 const logFileName = "log.out"
 
 func main() {
+	log.Println("Start service")
+
 	log := initLogger(logFileName)
-	connInfo := initOptions()
+	connInfo := initOptions(log)
+	store := initStore(log, connInfo)
+	server := NewPostServer(log, store)
+
+	if err := http.ListenAndServe(fmt.Sprintf("%s:%s", domainName, httpServerPort), server); err != nil {
+		store.Disconnect()
+		log.Fatalf("could not listen on port %s %v", httpServerPort, err)
+	}
+	waitTerminateSignal(log, store)
+}
+
+func initStore(log *log.Logger, connInfo string) *PostgresPostStore {
 	postStore, err := NewPostgresPostStore(connInfo)
 	if err != nil {
 		log.Panic(err)
 	}
-
-	server := NewPostServer(postStore, log)
-
-	log.Println("Start service")
-
-	if err := http.ListenAndServe(":5000", server); err != nil {
-		log.Fatalf("could not listen on port 5000 %v", err)
+	if err := postStore.Connect(); err != nil {
+		log.Panic(err)
 	}
-	//FIXIT close db
-	onTerminate()
+	return postStore
 }
 
 type options struct {
@@ -50,7 +61,7 @@ type options struct {
 	ssl        *bool
 }
 
-func initOptions() string {
+func initOptions(log *log.Logger) string {
 	log.Println("Parse command-line options")
 	opts := &options{}
 	opts.host = flag.String("host", "localhost", "service host name")
@@ -76,24 +87,31 @@ func initOptions() string {
 func initLogger(fileName string) *log.Logger {
 	if fileName != "" {
 		log.Println("Create log file")
-		logFile, err := os.OpenFile(getProjectPath()+"/"+logFileName, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+
+		filePath, err:= getLogFilePath()
 		if err != nil {
 			panic(err)
 		}
+
+		logFile, err := os.OpenFile(filePath, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			panic(err)
+		}
+		
 		return log.New(logFile, "", log.Ldate|log.Ltime|log.Lshortfile)
 	}
 	return log.New(os.Stdout, "", log.Ldate|log.Ltime)
 }
 
-func getProjectPath() string {
-	path, err := os.Getwd()
+func getLogFilePath() (string, error) {
+	projectPath, err := os.Getwd()
 	if err != nil {
-		log.Fatal(err)
+		return "", err
 	}
-	return path
+	return projectPath + string(filepath.Separator)+logFileName, nil
 }
 
-func onTerminate() {
+func waitTerminateSignal(log *log.Logger, store *PostgresPostStore) {
 	// After setting everything up!
 	// Wait for a SIGINT (perhaps triggered by user with CTRL-C)
 	// Run cleanup when signal is received
@@ -103,7 +121,7 @@ func onTerminate() {
 	go func() {
 		<-signalChan
 		fmt.Println("Received an interrupt, stopping services...")
-		//FIXIT    cleanup(services, c)
+		store.Disconnect()
 		close(cleanupDone)
 	}()
 	<-cleanupDone

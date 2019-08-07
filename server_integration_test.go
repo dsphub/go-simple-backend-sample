@@ -31,7 +31,7 @@ var std = log.New(os.Stderr, "", log.LstdFlags)
 
 func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 	store := EmptyInMemoryPostStore()
-	server := NewPostServer(store, std)
+	server := NewPostServer(std, store)
 	title, text := "title", "text"
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
 	server.ServeHTTP(httptest.NewRecorder(), newCreatePostRequest(title, text))
@@ -48,7 +48,7 @@ func TestCreatingPostsAndRetrievingThem(t *testing.T) {
 
 func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := NewPostServer(store, std)
+	server := NewPostServer(std, store)
 	server.ServeHTTP(httptest.NewRecorder(), newUpdatePostRequest(1, "new title", "new text"))
 	response := httptest.NewRecorder()
 
@@ -62,7 +62,7 @@ func TestUpdatingThePostAndRetrievingIt(t *testing.T) {
 
 func TestDeletingThePostAndRetrievingOtherOnes(t *testing.T) {
 	store := NewInMemoryPostStore()
-	server := NewPostServer(store, std)
+	server := NewPostServer(std, store)
 	server.ServeHTTP(httptest.NewRecorder(), newDeletePostRequest(1))
 	response := httptest.NewRecorder()
 

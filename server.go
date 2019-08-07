@@ -18,9 +18,9 @@ type PostServer struct {
 	log *log.Logger
 }
 
-func NewPostServer(store PostStore, log *log.Logger) *PostServer {
+func NewPostServer(log *log.Logger, store PostStore) *PostServer {
 	p := new(PostServer)
-
+	p.log = log
 	p.store = store
 
 	router := http.NewServeMux()
