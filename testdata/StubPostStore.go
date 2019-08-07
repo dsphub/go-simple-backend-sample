@@ -7,6 +7,14 @@ type StubPostStore struct {
 	Posts   map[int]Post
 }
 
+func (s *StubPostStore) Connect() error {
+	return nil
+}
+
+func (s *StubPostStore) Disconnect() error {
+	return nil
+}
+
 func (s *StubPostStore) GetAllPosts() ([]Post, error) {
 	values := make([]Post, 0, len(s.Posts))
 	for _, v := range s.Posts {

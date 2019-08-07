@@ -9,12 +9,13 @@ import (
 )
 
 type PostStore interface {
+	Connect() error
+	Disconnect() error
 	GetAllPosts() ([]Post, error)
 	GetPostByID(id int) (Post, error)
 	CreatePost(title, text string) error
 	UpdatePost(id int, title, text string) error
 	DeletePost(id int) error
-	Close() error
 }
 
 type PostgresPostStore struct {
@@ -26,10 +27,15 @@ func NewPostgresPostStore(connInfo string) (*PostgresPostStore, error) {
 	if err != nil {
 		return nil, err
 	}
-	if err = db.Ping(); err != nil {
-		return nil, err
-	}
 	return &PostgresPostStore{db}, nil
+}
+
+func (p *PostgresPostStore) Connect() error {
+	return p.db.Ping()
+}
+
+func (p *PostgresPostStore) Disconnect() error {
+	return p.db.Close()
 }
 
 func (p *PostgresPostStore) GetAllPosts() ([]Post, error) {
@@ -89,8 +95,4 @@ func (p *PostgresPostStore) DeletePost(id int) error {
 		log.Fatal(err)
 	}
 	return err
-}
-
-func (p *PostgresPostStore) Close() error {
-	return p.db.Close()
 }
